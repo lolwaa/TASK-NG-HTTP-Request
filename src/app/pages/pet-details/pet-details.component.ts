@@ -1,26 +1,50 @@
-import { Component } from '@angular/core';
+import { Component , effect, inject, Inject} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Pet, pets } from '../../../data/pets';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-pet-details',
   standalone: true,
-  imports: [],
+  imports: [HttpClientModule],
   templateUrl: './pet-details.component.html',
   styleUrl: './pet-details.component.css'
 })
 export class PetDetailsComponent {
-  pet: Pet | null = null;
-  pets = pets;
+  pet: any = null;
+  isLoading: boolean = true;
+  errorMessage: string = '';
 
-  constructor(private route: ActivatedRoute, private router: Router) {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    const foundPet = pets.find((p) => p.id === id);
+  private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
-    if (!foundPet) {
-      this.router.navigate(['/pets']);
-    } else {
-      this.pet = foundPet;
-    }
+  constructor() {
+    
+    effect(() => {
+      const petId = this.route.snapshot.paramMap.get('id'); 
+
+      if (petId) {
+        this.isLoading = true;
+        this.http.get(`https://pets-react-query-backend.eapi.joincoded.com/pets/${petId}`)
+          .subscribe({
+            next: (pet) => {
+              this.pet = pet; 
+              this.isLoading = false; 
+            },
+            error: () => {
+              this.errorMessage = 'Error fetching pet details!';
+              this.isLoading = false; 
+              this.router.navigate(['/pets']); 
+            },
+          });
+      } else {
+        this.errorMessage = 'Pet ID not found in the URL'; 
+        this.isLoading = false;
+        this.router.navigate(['/pets']); 
+      }
+    });
   }
 }
+
+
+
